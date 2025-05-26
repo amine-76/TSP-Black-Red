@@ -21,6 +21,7 @@ class Sommet:
         
         self.x = x
         self.y = y
+        # Ajout de la propriété couleur pour un sommet
         self.couleur = couleur
     
     def getId (self):
@@ -31,6 +32,9 @@ class Sommet:
     
     def getY (self):
         return self.y
+    
+    def getCouleur (self):
+        return self.couleur
     
     def affiche (self):
         print('({}:{:.2f},{:.2f})'.format(self.id,self.x,self.y))
@@ -50,7 +54,12 @@ class Instance:
         self.computeDistances()
 
     def generateNodes (self):
-        self.sommets = [Sommet(random.uniform(0,100), random.uniform(0,100)) for i in range(self.nb_sommets)]
+        self.sommets = [Sommet(
+                        random.uniform(0,100),
+                        random.uniform(0,100),
+                        # alternance de couleurs pour les sommets
+                        "red" if i % 2 == 0 else "black" 
+                        ) for i in range(self.nb_sommets)]
     
     def computeDistances (self):
         self.dist = [[0.0] * self.nb_sommets for i in range(self.nb_sommets)]
@@ -171,17 +180,27 @@ class Heuristiques:
         available = [i for i in range(1,self.instance.size())]
         current = 0
         seq = [current]
+        # Récuperation de la couleur du sommet de départ
+        last_color = self.instance.sommets[current].getCouleur() 
         
         while len(available) != 0:
             best = None
-            dist = 200.0
+            #dist = 200.0
+            # On cherche le plus proche voisin de couleur différente
+            dist_min = float('inf')
             for elt in available:
-                if self.instance.dist[current][elt] < dist:
-                    dist = self.instance.dist[current][elt]
-                    best = elt
+                sommet = self.instance.sommets[elt]
+                if sommet.getCouleur() != last_color:  # Contrainte rouge/noir
+                    distance = self.instance.dist[current][elt]
+                    if distance < dist_min:
+                        dist_min = distance
+                        best = elt
+            if best is None:
+                best = available[0]  # Si aucun sommet valide , relâcher la contrainte 
             seq.append(best)
             available.remove(best)
             current = best
+            last_color = self.instance.sommets[current].getCouleur()  # Mettre à jour la couleur du dernier sommet
         
         s = Solution(self.instance, 'nearest neighbour')
         s.setSequence(seq)
@@ -260,10 +279,10 @@ class Heuristiques:
         return record
 
 
+
 if __name__ == '__main__':
-    # creation de l'instance: 10 sommets
-    random.seed(0)
-    inst = Instance('random',30)
+    random.seed(42)  # Pour la reproductibilité des résultats
+    inst = Instance('random',20) # 20 sommets avec des couleurs alternées
     # inst.affiche()
     inst.plot()
     
@@ -282,19 +301,20 @@ if __name__ == '__main__':
     # print('heuristique random: duree = {:.3f} s'.format(duree))
     # s2.affiche()
     
-    # debut = time.time()
-    # s3 = heur.compute_nearest()
-    # duree = time.time() - debut
-    # print('heuristique plus proche voisins: duree = {:.3f} s'.format(duree))
-    # s3.affiche()
-    # s3.plot()
+    # Sulution glutonne adaptée
+    debut = time.time()
+    s3 = heur.compute_nearest()
+    duree = time.time() - debut
+    print('heuristique plus proche voisins: duree = {:.3f} s'.format(duree))
+    s3.affiche()
+    s3.plot()
     
-    # debut = time.time()
-    # heur.localSearch(s3)
-    # duree = time.time() - debut
-    # print('recherche locale: duree = {:.3f} s'.format(duree))
-    # s3.affiche()
-    # s3.plot()
+    debut = time.time()
+    heur.localSearch(s3)
+    duree = time.time() - debut
+    print('recherche locale: duree = {:.3f} s'.format(duree))
+    s3.affiche()
+    s3.plot()
     
     # debut = time.time()
     # s4, evolution = heur.multistart(20)
