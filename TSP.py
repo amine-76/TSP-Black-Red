@@ -292,7 +292,7 @@ class Heuristiques:
 if __name__ == '__main__':
     random.seed(42)  # Pour la reproductibilité des résultats
     inst = Instance('RougeNoir',20) # 20 sommets avec des couleurs alternées
-    # inst.affiche()
+    inst.affiche()
     inst.plot()
     
     # generation heuristique des solutions
@@ -318,12 +318,15 @@ if __name__ == '__main__':
     s3.affiche()
     s3.plot()
     
+    # Amélioration par recherche locale
     debut = time.time()
     heur.localSearch(s3)
     duree = time.time() - debut
     print('recherche locale: duree = {:.3f} s'.format(duree))
     s3.affiche()
     s3.plot()
+    
+    print('-------------------------------')
     
     # debut = time.time()
     # s4, evolution = heur.multistart(20)
