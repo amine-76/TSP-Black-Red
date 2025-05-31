@@ -127,22 +127,22 @@ class Solution:
     def affiche (self):
         print('solution \'{}\': {} -> val = {:.2f} temps = {:.2f} s'.format(self.name, self.sequence, self.valeur, self.temps))
 
-    def plot (self):
+    def plot(self):
         plt.figure()
-        plt.title('\'{}\': valeur = {:.2f} en {:.2f} s'.format(self.name, self.valeur, self.temps))
-        plt.xlabel('X')
-        plt.ylabel('Y')
-        plt.xlim(-1,101)
-        plt.ylim(-1,101)
-        x = [self.instance.sommets[index].getX() for index in self.sequence]
-        y = [self.instance.sommets[index].getY() for index in self.sequence]
+        plt.title(f"TSP Rouge/Noir - Distance: {self.valeur:.2f}")
+        for i, idx in enumerate(self.sequence):
+            sommet = self.instance.sommets[idx]
+            color = 'red' if sommet.getCouleur() == "red" else 'black'
+            plt.scatter(sommet.getX(), sommet.getY(), c=color, s=100)
+            plt.text(sommet.getX(), sommet.getY() + 2, str(idx), ha='center')
+        
+        # Tracer les lignes
+        x = [self.instance.sommets[idx].getX() for idx in self.sequence]
+        y = [self.instance.sommets[idx].getY() for idx in self.sequence]
         x.append(x[0])
         y.append(y[0])
-        plt.plot(x, y, marker='o')
-        for index in self.sequence[1:]:
-            sommet = self.instance.sommets[index]
-            plt.text(sommet.getX(), sommet.getY() + 2, str(sommet.getId()))
-        plt.text(x[0], y[0] + 2, str(self.instance.sommets[self.sequence[0]].getId()), color = 'r')
+        plt.plot(x, y, 'b-', alpha=0.5)
+        
         plt.grid(True)
         plt.show()
 
@@ -228,22 +228,31 @@ class Heuristiques:
         return record
 
 
-    def mvt2Opt (self, s: Solution):
+    def mvt2Opt(self, s: Solution):
         seq = s.getSequence()
         dist = self.instance.dist
-        for i in range(0,len(seq)-2):
-            for j in range(i+1, len(seq)-1):
-                if i == 0 and j == len(seq)-2:
+        improved = False
+        n = len(seq)
+
+        for i in range(1, n - 2):  # i-1 est sûr
+            for j in range(i + 1, n - 2):  # j+1 est sûr
+                a, b = seq[i - 1], seq[i]
+                c, d = seq[j], seq[j + 1]
+
+                # Vérifier alternance rouge/noir après inversion
+                if self.instance.sommets[a].getCouleur() == self.instance.sommets[c].getCouleur():
                     continue
-                delta = dist[seq[i-1]][seq[i]] + dist[seq[j]][seq[j+1]] - dist[seq[i-1]][seq[j]] - dist[seq[i]][seq[j+1]]
+                if self.instance.sommets[b].getCouleur() == self.instance.sommets[d].getCouleur():
+                    continue
+
+                delta = dist[a][b] + dist[c][d] - dist[a][c] - dist[b][d]
                 if delta > 0:
-                    while i<j:
-                        seq[i],seq[j] = seq[j], seq[i]
-                        i += 1
-                        j -= 1
+                    seq[i:j+1] = reversed(seq[i:j+1])
                     s.setSequence(seq)
-                    return True
-        return False
+                    improved = True
+                    return True  # amélioration trouvée → sortir pour refaire un cycle
+        return False  # aucune amélioration
+
     
     def localSearch (self, s):
         cpt = 0
@@ -282,7 +291,7 @@ class Heuristiques:
 
 if __name__ == '__main__':
     random.seed(42)  # Pour la reproductibilité des résultats
-    inst = Instance('random',20) # 20 sommets avec des couleurs alternées
+    inst = Instance('RougeNoir',20) # 20 sommets avec des couleurs alternées
     # inst.affiche()
     inst.plot()
     
