@@ -292,7 +292,7 @@ class Heuristiques:
 if __name__ == '__main__':
     random.seed(42)  # Pour la reproductibilité des résultats
     inst = Instance('RougeNoir',20) # 20 sommets avec des couleurs alternées
-    inst.affiche()
+    #inst.affiche()
     inst.plot()
     
     # generation heuristique des solutions
