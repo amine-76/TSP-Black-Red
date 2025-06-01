@@ -35,7 +35,7 @@ pois_coords = [(point.y, point.x) for point in gdf_pois.geometry]
 
 # Trouver les nœuds les plus proches dans le graphe
 print("Recherche des nœuds les plus proches pour les POIs...")
-poi_nodes = [ ox.distance.nearest_nodes(graph, x=lon, y=lat) for lat, lon in pois_coords]
+poi_nodes = [ ox.distance.nearest_nodes(graph, lon, lat) for lat, lon in pois_coords]
 
 #-------------------------------
 # 5. Matrice de distance entre les POIs

@@ -10,6 +10,9 @@ import math
 import itertools
 import time
 import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+
 
 
 class Sommet:
@@ -92,6 +95,27 @@ class Instance:
         plt.scatter(x,y)
         plt.grid(True)
         plt.show()
+        
+    @staticmethod
+    def load_instance_from_csv(coord_file, dist_file):
+        coords_df = pd.read_csv(coord_file)
+        dist_matrix = np.loadtxt(dist_file, delimiter=",")
+
+        sommets = []
+        Sommet.cpt_sommet = 0  
+        for i, (lat, lon) in enumerate(coords_df.values):
+            couleur = "red" if i % 2 == 0 else "black"
+            s = Sommet(x=lon, y=lat, couleur=couleur)
+            sommets.append(s)
+
+        # Création sans appel à reset()
+        instance = Instance.__new__(Instance)  # bypass __init__
+        instance.name = "POI"
+        instance.nb_sommets = len(sommets)
+        instance.sommets = sommets
+        instance.dist = dist_matrix
+        return instance
+
 
 
 class Solution:
@@ -289,68 +313,57 @@ class Heuristiques:
 
 
 
+
 if __name__ == '__main__':
     random.seed(42)  # Pour la reproductibilité des résultats
-    inst = Instance('RougeNoir',20) # 20 sommets avec des couleurs alternées
-    #inst.affiche()
-    inst.plot()
-    
-    # generation heuristique des solutions
-    heur = Heuristiques(inst)
-    
+
+    # ======================================
+    # TEST SUR INSTANCE ALÉATOIRE (20 sommets)
+    # ======================================
+    #inst = Instance('RougeNoir', 20)  # 20 sommets avec couleurs alternées
+    #inst.plot()
+    #heur = Heuristiques(inst)
+
+    # Heuristique plus proche voisin
     # debut = time.time()
-    # s1 = heur.compute_triviale()
+    # s3 = heur.compute_nearest()
     # duree = time.time() - debut
-    # print('heuristique triviale: duree = {:.3f} s'.format(duree))
-    # s1.affiche()
-    
+    # print('heuristique plus proche voisins: duree = {:.3f} s'.format(duree))
+    # s3.affiche()
+    # s3.plot()
+
+    # Recherche locale
     # debut = time.time()
-    # s2 = heur.compute_random()
+    # heur.localSearch(s3)
     # duree = time.time() - debut
-    # print('heuristique random: duree = {:.3f} s'.format(duree))
-    # s2.affiche()
+    # print('recherche locale: duree = {:.3f} s'.format(duree))
+    # s3.affiche()
+    # s3.plot()
+
+    # Test de toutes les méthodes (décommenter si besoin)
+    # methodes = [heur.compute_triviale, heur.compute_random, heur.compute_nearest, heur.multistart, heur.multistart_LS]
+    # for m in methodes:
+    #     debut = time.time()
+    #     sol = m()
+    #     duree = time.time() - debut
+    #     sol.setTemps(duree)
+    #     sol.affiche()
+    #     sol.plot()
+    #     print('evolution = ', heur.evolution)
+    #     if len(heur.evolution) > 0:
+    #         heur.plot()
+
+    print("\n" + "="*50)
+    print("Test sur instance réelle à partir des POIs OSM")
+    print("="*50)
+
+    # ======================================
+    # CHARGEMENT D'UNE INSTANCE RÉELLE
+    # ======================================
+    instance = Instance.load_instance_from_csv("pois_coords.csv", "dist_matrix.csv")
+    print(f"Instance OSM chargée avec {instance.size()} sommets.")
     
-    # Sulution glutonne adaptée
-    debut = time.time()
-    s3 = heur.compute_nearest()
-    duree = time.time() - debut
-    print('heuristique plus proche voisins: duree = {:.3f} s'.format(duree))
-    s3.affiche()
-    s3.plot()
-    
-    # Amélioration par recherche locale
-    debut = time.time()
-    heur.localSearch(s3)
-    duree = time.time() - debut
-    print('recherche locale: duree = {:.3f} s'.format(duree))
-    s3.affiche()
-    s3.plot()
-    
-    print('-------------------------------')
-    
-    # debut = time.time()
-    # s4, evolution = heur.multistart(20)
-    # duree = time.time() - debut
-    # print('multistart: duree = {:.3f} s'.format(duree))
-    # s4.affiche()
-    # s4.plot()
-    # print('evolution = ', evolution)
-    
-    # debut = time.time()
-    # s5 = heur.compute_enumerate()
-    # duree = time.time() - debut
-    # print('multistart: duree = {:.3f} s'.format(duree))
-    # s5.affiche()
-    # s5.plot()
-    
-    methodes = [heur.compute_triviale, heur.compute_random, heur.compute_nearest, heur.multistart, heur.multistart_LS]
-    for m in methodes:
-        debut = time.time()
-        sol = m()
-        duree = time.time() - debut
-        sol.setTemps(duree)
-        sol.affiche()
-        sol.plot()
-        print('evolution = ', heur.evolution)
-        if len(heur.evolution) > 0:
-            heur.plot()
+    heur = Heuristiques(instance)
+    s = heur.compute_nearest()
+    s.affiche()
+    s.plot()
