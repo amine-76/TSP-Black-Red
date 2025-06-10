@@ -56,12 +56,13 @@ class Instance:
         self.generateNodes()
         self.computeDistances()
 
+    
     def generateNodes (self):
         self.sommets = [Sommet(
                         random.uniform(0,100),
                         random.uniform(0,100),
                         # alternance de couleurs pour les sommets
-                        "red" if i % 2 == 0 else "black" 
+                        #"red" if i % 2 == 0 else "black" 
                         ) for i in range(self.nb_sommets)]
     
     def computeDistances (self):
@@ -151,24 +152,28 @@ class Solution:
     def affiche (self):
         print('solution \'{}\': {} -> val = {:.2f} temps = {:.2f} s'.format(self.name, self.sequence, self.valeur, self.temps))
 
-    def plot(self):
-        plt.figure()
-        plt.title(f"TSP Rouge/Noir - Distance: {self.valeur:.2f}")
-        for i, idx in enumerate(self.sequence):
-            sommet = self.instance.sommets[idx]
-            color = 'red' if sommet.getCouleur() == "red" else 'black'
-            plt.scatter(sommet.getX(), sommet.getY(), c=color, s=100)
-            plt.text(sommet.getX(), sommet.getY() + 2, str(idx), ha='center')
-        
-        # Tracer les lignes
-        x = [self.instance.sommets[idx].getX() for idx in self.sequence]
-        y = [self.instance.sommets[idx].getY() for idx in self.sequence]
-        x.append(x[0])
-        y.append(y[0])
-        plt.plot(x, y, 'b-', alpha=0.5)
-        
-        plt.grid(True)
-        plt.show()
+    def plot(self, savepath=None):
+            plt.figure()
+            plt.title(f"TSP Rouge/Noir - Distance: {self.valeur:.2f}")
+            for i, idx in enumerate(self.sequence):
+                sommet = self.instance.sommets[idx]
+                color = 'red' if sommet.getCouleur() == "red" else 'black'
+                plt.scatter(sommet.getX(), sommet.getY(), c=color, s=100)
+                plt.text(sommet.getX(), sommet.getY() + 2, str(idx), ha='center')
+
+            x = [self.instance.sommets[idx].getX() for idx in self.sequence]
+            y = [self.instance.sommets[idx].getY() for idx in self.sequence]
+            x.append(x[0])
+            y.append(y[0])
+            plt.plot(x, y, 'b-', alpha=0.5)
+            plt.grid(True)
+
+            if savepath:
+                plt.savefig(savepath)
+                plt.close()
+            else:
+                plt.show()
+
 
 
 class Heuristiques:
@@ -176,30 +181,60 @@ class Heuristiques:
         self.instance = inst
         self.evolution = []
 
-    def plot (self):
+    def plot(self, savepath=None):
         plt.figure()
-        plt.title('evolution')
+        plt.title('Évolution du coût')
         plt.xlabel('temps (s)')
         plt.ylabel('valeur')
         x = [elt[0] for elt in self.evolution]
         y = [elt[1] for elt in self.evolution]
-        plt.plot(x,y, marker='o')
+        plt.plot(x, y, marker='o')
         plt.grid(True)
-        plt.show()
+
+        if savepath:
+            plt.savefig(savepath)
+            plt.close()
+        else:
+            plt.show()
+
         
-    def compute_triviale (self):
-        seq = [i for i in range(self.instance.size())]
-        s = Solution(self.instance, 'triviale')
+    def compute_triviale(self):
+        # Génère une séquence alternée rouge/noir
+        seq = []
+        red_nodes = [s.getId() for s in self.instance.sommets if s.getCouleur() == "red"]
+        black_nodes = [s.getId() for s in self.instance.sommets if s.getCouleur() == "black"]
+        
+        # Alterne les sommets rouges et noirs
+        for r, b in zip(red_nodes, black_nodes):
+            seq.extend([r, b])
+        
+        s = Solution(self.instance, 'triviale (alternée)')
         s.setSequence(seq)
         return s
         
-    def compute_random (self):
-        seq = [i for i in range(self.instance.size())]
-        random.shuffle(seq)
-        s = Solution(self.instance, 'random')
+    def compute_random(self):
+        red_nodes = [s.getId() for s in self.instance.sommets if s.getCouleur() == "red"]
+        black_nodes = [s.getId() for s in self.instance.sommets if s.getCouleur() == "black"]
+        
+        # Mélange les listes séparément
+        random.shuffle(red_nodes)
+        random.shuffle(black_nodes)
+        
+        # Alterne les couleurs en commençant par un rouge ou un noir aléatoire
+        seq = []
+        start_with_red = random.choice([True, False])
+        
+        if start_with_red:
+            for r, b in zip(red_nodes, black_nodes):
+                seq.extend([r, b])
+        else:
+            for b, r in zip(black_nodes, red_nodes):
+                seq.extend([b, r])
+        
+        s = Solution(self.instance, 'random (alterné)')
         s.setSequence(seq)
         return s
-    
+        
     def compute_nearest (self):
         available = [i for i in range(1,self.instance.size())]
         current = 0
@@ -253,13 +288,12 @@ class Heuristiques:
 
 
     def mvt2Opt(self, s: Solution):
-        seq = s.getSequence()
+        seq = s.getSequence().copy() 
         dist = self.instance.dist
-        improved = False
         n = len(seq)
 
-        for i in range(1, n - 2):  # i-1 est sûr
-            for j in range(i + 1, n - 2):  # j+1 est sûr
+        for i in range(1, n - 2):  
+            for j in range(i + 1, n - 2):  
                 a, b = seq[i - 1], seq[i]
                 c, d = seq[j], seq[j + 1]
 
@@ -271,20 +305,20 @@ class Heuristiques:
 
                 delta = dist[a][b] + dist[c][d] - dist[a][c] - dist[b][d]
                 if delta > 0:
-                    seq[i:j+1] = reversed(seq[i:j+1])
-                    s.setSequence(seq)
-                    improved = True
-                    return True  # amélioration trouvée → sortir pour refaire un cycle
-        return False  # aucune amélioration
+                    # 💡 Modifie une copie et la renvoie
+                    new_seq = seq[:i] + list(reversed(seq[i:j+1])) + seq[j+1:]
+                    s.setSequence(new_seq)
+                    return True
+        return False
+
 
     
-    def localSearch (self, s):
+    def localSearch(self, s, max_iter=1000):
         cpt = 0
-        while self.mvt2Opt(s) is True:
-            # print('iteration {}'.format(cpt),end='')
-            # s.affiche()
+        while cpt < max_iter and self.mvt2Opt(s):
             cpt += 1
         return cpt
+
     
     def multistart (self, nb_iter = 20):
         record = Solution(self.instance, 'Multistart')
@@ -304,14 +338,20 @@ class Heuristiques:
         self.evolution = []
         for iter in range(nb_iter):
             s = self.compute_random()
-            self.localSearch(s)
+            self.localSearch(s,max_iter=500)
             if record.getValeur() == 0.0 or s.getValeur() < record.getValeur():
                 record.setSequence(s.getSequence())
                 duree = time.time() - debut
                 self.evolution.append((duree,s.getValeur()))
         return record
 
-
+def check_alternance(sequence, instance):
+    for i in range(len(sequence) - 1):
+        current = instance.sommets[sequence[i]].getCouleur()
+        next = instance.sommets[sequence[i+1]].getCouleur()
+        if current == next:
+            return False
+    return True
 
 
 if __name__ == '__main__':
@@ -320,9 +360,9 @@ if __name__ == '__main__':
     # ======================================
     # TEST SUR INSTANCE ALÉATOIRE (20 sommets)
     # ======================================
-    #inst = Instance('RougeNoir', 20)  # 20 sommets avec couleurs alternées
-    #inst.plot()
-    #heur = Heuristiques(inst)
+    inst = Instance('RougeNoir', 20)  # 20 sommets avec couleurs alternées
+    inst.plot()
+    heur = Heuristiques(inst)
 
     # Heuristique plus proche voisin
     # debut = time.time()
@@ -348,22 +388,38 @@ if __name__ == '__main__':
     #     duree = time.time() - debut
     #     sol.setTemps(duree)
     #     sol.affiche()
+    #     check = check_alternance(sol.getSequence(), inst)
+    #     print(f"Alternance respectée: {check}")  # Doit retourner True si l'alternance est respectée
     #     sol.plot()
     #     print('evolution = ', heur.evolution)
     #     if len(heur.evolution) > 0:
     #         heur.plot()
 
     print("\n" + "="*50)
-    print("Test sur instance réelle à partir des POIs OSM")
+    print("Test sur instances réelles à partir des POIs OSM")
     print("="*50)
 
     # ======================================
     # CHARGEMENT D'UNE INSTANCE RÉELLE
     # ======================================
-    instance = Instance.load_instance_from_csv("pois_coords.csv", "dist_matrix.csv")
-    print(f"Instance OSM chargée avec {instance.size()} sommets.")
-    
-    heur = Heuristiques(instance)
-    s = heur.compute_nearest()
-    s.affiche()
-    s.plot()
+    # instance = Instance.load_instance_from_csv(
+    #     coord_file='pois_coords.csv',
+    #     dist_file='dist_matrix.csv'
+    # )
+    # heur = Heuristiques(instance)
+    # methodes = [heur.compute_triviale, heur.compute_random, heur.compute_nearest, heur.multistart, heur.multistart_LS]
+    # heur = Heuristiques(instance)
+    # for m in methodes:
+    #     debut = time.time()
+    #     sol = m()
+    #     duree = time.time() - debut
+    #     sol.setTemps(duree)
+    #     sol.affiche()
+    #     sol.plot()
+    #     print(check_alternance(sol.getSequence(), instance))  # Doit retourner True si l'alternance est respectée
+
+    #     sol.plot(savepath=f"figures/solution_{m.__name__}.png")
+
+    #     if len(heur.evolution) > 0:
+    #         heur.plot(savepath=f"figures/evolution_{m.__name__}.png") 
+
