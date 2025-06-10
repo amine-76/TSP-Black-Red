@@ -62,7 +62,7 @@ class Instance:
                         random.uniform(0,100),
                         random.uniform(0,100),
                         # alternance de couleurs pour les sommets
-                        #"red" if i % 2 == 0 else "black" 
+                        "red" if i % 2 == 0 else "black" 
                         ) for i in range(self.nb_sommets)]
     
     def computeDistances (self):
@@ -116,6 +116,30 @@ class Instance:
         instance.sommets = sommets
         instance.dist = dist_matrix
         return instance
+    
+    def generateColors_from_sequence(self, sequence):
+        """
+        Attribue les couleurs pour maximiser les conflits sur une séquence donnée.
+        Deux sommets consécutifs auront la même couleur.
+        """
+        for i, idx in enumerate(sequence):
+            couleur = "red" if i % 2 == 0 else "red"  # Toujours la même couleur pour créer des conflits
+            self.sommets[idx].couleur = couleur
+
+    def generateColors_random(self):
+        """
+        Attribue aléatoirement 'red' ou 'black' à chaque sommet.
+        """
+        for sommet in self.sommets:
+            sommet.couleur = random.choice(["red", "black"])
+
+    def generateColors_by_position(self):
+        """
+        Coupe l'ensemble des sommets en deux groupes selon la position X.
+        X < 50 : rouge, X >= 50 : noir
+        """
+        for sommet in self.sommets:
+            sommet.couleur = "red" if sommet.x < 50 else "black"
 
 
 
@@ -353,6 +377,15 @@ def check_alternance(sequence, instance):
             return False
     return True
 
+def count_color_conflicts(sequence, instance):
+    """Compte le nombre de conflits de couleur dans une séquence."""
+    conflits = 0
+    for i in range(len(sequence) - 1):
+        c1 = instance.sommets[sequence[i]].getCouleur()
+        c2 = instance.sommets[sequence[i+1]].getCouleur()
+        if c1 == c2:
+            conflits += 1
+    return conflits
 
 if __name__ == '__main__':
     random.seed(42)  # Pour la reproductibilité des résultats
@@ -363,6 +396,26 @@ if __name__ == '__main__':
     inst = Instance('RougeNoir', 20)  # 20 sommets avec couleurs alternées
     inst.plot()
     heur = Heuristiques(inst)
+
+     # 1. Générer une solution TSP classique (par exemple, nearest neighbour)
+    s_tsp = heur.compute_nearest()
+    sequence_tsp = s_tsp.getSequence()
+
+    # 2. Attribuer les couleurs pour maximiser les conflits sur cette séquence
+    inst.generateColors_from_sequence(sequence_tsp)
+    print("Conflits de couleurs générés sur la séquence TSP.")
+
+    # 3. Compter le nombre de conflits de couleur dans la solution TSP classique
+    nb_conflits = count_color_conflicts(sequence_tsp, inst)
+    print(f"Nombre de conflits de couleur dans la solution TSP classique : {nb_conflits}")
+
+    # 4. (Optionnel) Générer des couleurs aléatoires
+    inst.generateColors_random()
+    print("Couleurs aléatoires générées.")
+
+    # 5. (Optionnel) Générer des couleurs par position
+    inst.generateColors_by_position()
+    print("Couleurs générées par position X.")
 
     # Heuristique plus proche voisin
     # debut = time.time()
@@ -395,9 +448,9 @@ if __name__ == '__main__':
     #     if len(heur.evolution) > 0:
     #         heur.plot()
 
-    print("\n" + "="*50)
-    print("Test sur instances réelles à partir des POIs OSM")
-    print("="*50)
+    # print("\n" + "="*50)
+    # print("Test sur instances réelles à partir des POIs OSM")
+    # print("="*50)
 
     # ======================================
     # CHARGEMENT D'UNE INSTANCE RÉELLE
