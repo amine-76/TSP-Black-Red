@@ -12,6 +12,7 @@ import time
 import matplotlib.pyplot as plt
 import pandas as pd
 import numpy as np
+import os
 
 
 
@@ -58,6 +59,7 @@ class Instance:
 
     
     def generateNodes (self):
+        Sommet.cpt_sommet = 0  # Réinitialise le compteur de sommets
         self.sommets = [Sommet(
                         random.uniform(0,100),
                         random.uniform(0,100),
@@ -393,86 +395,103 @@ if __name__ == '__main__':
     # ======================================
     # TEST SUR INSTANCE ALÉATOIRE (20 sommets)
     # ======================================
-    inst = Instance('RougeNoir', 20)  # 20 sommets avec couleurs alternées
+    inst = Instance('Classique', 20)  # 20 sommets avec couleurs alternées
     inst.plot()
     heur = Heuristiques(inst)
 
-     # 1. Générer une solution TSP classique (par exemple, nearest neighbour)
+    #  # 1. Générer une solution TSP classique (par exemple, nearest neighbour)
     s_tsp = heur.compute_nearest()
     sequence_tsp = s_tsp.getSequence()
+    print("Séquence TSP classique générée :", sequence_tsp)
 
-    # 2. Attribuer les couleurs pour maximiser les conflits sur cette séquence
+    # # 2. Attribuer les couleurs pour maximiser les conflits sur cette séquence
     inst.generateColors_from_sequence(sequence_tsp)
     print("Conflits de couleurs générés sur la séquence TSP.")
 
-    # 3. Compter le nombre de conflits de couleur dans la solution TSP classique
+    # # 3. Compter le nombre de conflits de couleur dans la solution TSP classique
     nb_conflits = count_color_conflicts(sequence_tsp, inst)
     print(f"Nombre de conflits de couleur dans la solution TSP classique : {nb_conflits}")
+    
 
-    # 4. (Optionnel) Générer des couleurs aléatoires
+    # # 4. (Optionnel) Générer des couleurs aléatoires
     inst.generateColors_random()
     print("Couleurs aléatoires générées.")
 
-    # 5. (Optionnel) Générer des couleurs par position
+    # # 5. (Optionnel) Générer des couleurs par position
     inst.generateColors_by_position()
     print("Couleurs générées par position X.")
 
     # Heuristique plus proche voisin
-    # debut = time.time()
-    # s3 = heur.compute_nearest()
-    # duree = time.time() - debut
-    # print('heuristique plus proche voisins: duree = {:.3f} s'.format(duree))
-    # s3.affiche()
-    # s3.plot()
+    debut = time.time()
+    s3 = heur.compute_nearest()
+    duree = time.time() - debut
+    print('heuristique plus proche voisins: duree = {:.3f} s'.format(duree))
+    s3.affiche()
+    s3.plot()
 
     # Recherche locale
-    # debut = time.time()
-    # heur.localSearch(s3)
-    # duree = time.time() - debut
-    # print('recherche locale: duree = {:.3f} s'.format(duree))
-    # s3.affiche()
-    # s3.plot()
+    debut = time.time()
+    heur.localSearch(s3)
+    duree = time.time() - debut
+    print('recherche locale: duree = {:.3f} s'.format(duree))
+    s3.affiche()
+    s3.plot()
 
     # Test de toutes les méthodes (décommenter si besoin)
-    # methodes = [heur.compute_triviale, heur.compute_random, heur.compute_nearest, heur.multistart, heur.multistart_LS]
-    # for m in methodes:
-    #     debut = time.time()
-    #     sol = m()
-    #     duree = time.time() - debut
-    #     sol.setTemps(duree)
-    #     sol.affiche()
-    #     check = check_alternance(sol.getSequence(), inst)
-    #     print(f"Alternance respectée: {check}")  # Doit retourner True si l'alternance est respectée
-    #     sol.plot()
-    #     print('evolution = ', heur.evolution)
-    #     if len(heur.evolution) > 0:
-    #         heur.plot()
+    instTest = Instance('RougeNoir', 20)  # 20 sommets avec couleurs alternées
+    instTest.plot()
+    heur = Heuristiques(instTest)
+    # S'assurer que le dossier 'figures' existe
+    os.makedirs("figures", exist_ok=True)
 
-    # print("\n" + "="*50)
-    # print("Test sur instances réelles à partir des POIs OSM")
-    # print("="*50)
+    methodes = [
+        ("triviale", heur.compute_triviale),
+        ("random", heur.compute_random),
+        ("nearest", heur.compute_nearest),
+        ("multistart", heur.multistart),
+        ("multistart_LS", heur.multistart_LS)
+    ]
+    for nom, m in methodes:
+        debut = time.time()
+        sol = m()
+        duree = time.time() - debut
+        sol.setTemps(duree)
+        sol.affiche()
+        check = check_alternance(sol.getSequence(), instTest)
+        print(f"Alternance respectée: {check}")  # Doit retourner True si l'alternance est respectée
+        # Sauvegarde de la figure de la solution
+        sol.plot()
+        sol.plot(savepath=f"figures/test_{nom}.png")
+        print('evolution = ', heur.evolution)
+        # Sauvegarde de la courbe d'évolution si elle existe
+        if len(heur.evolution) > 0:
+            heur.plot(savepath=f"figures/evolution_test_{nom}.png")
+
+    print("\n" + "="*50)
+    print("Test sur instances réelles à partir des POIs OSM")
+    print("="*50)
 
     # ======================================
     # CHARGEMENT D'UNE INSTANCE RÉELLE
     # ======================================
-    # instance = Instance.load_instance_from_csv(
-    #     coord_file='pois_coords.csv',
-    #     dist_file='dist_matrix.csv'
-    # )
-    # heur = Heuristiques(instance)
-    # methodes = [heur.compute_triviale, heur.compute_random, heur.compute_nearest, heur.multistart, heur.multistart_LS]
-    # heur = Heuristiques(instance)
-    # for m in methodes:
-    #     debut = time.time()
-    #     sol = m()
-    #     duree = time.time() - debut
-    #     sol.setTemps(duree)
-    #     sol.affiche()
-    #     sol.plot()
-    #     print(check_alternance(sol.getSequence(), instance))  # Doit retourner True si l'alternance est respectée
+    instance = Instance.load_instance_from_csv(
+        coord_file='pois_coords.csv',
+        dist_file='dist_matrix.csv'
+    )
+    heur = Heuristiques(instance)
+    methodes = [heur.compute_triviale, heur.compute_random, heur.compute_nearest, heur.multistart, heur.multistart_LS]
+    heur = Heuristiques(instance)
+    for m in methodes:
+        debut = time.time()
+        sol = m()
+        duree = time.time() - debut
+        sol.setTemps(duree)
+        sol.affiche()
+        sol.plot()
+        print(check_alternance(sol.getSequence(), instance))  # Doit retourner True si l'alternance est respectée
 
-    #     sol.plot(savepath=f"figures/solution_{m.__name__}.png")
+        sol.plot(savepath=f"figures/solution_{m.__name__}.png")
 
-    #     if len(heur.evolution) > 0:
-    #         heur.plot(savepath=f"figures/evolution_{m.__name__}.png") 
+        if len(heur.evolution) > 0:
+            heur.plot(savepath=f"figures/evolution_{m.__name__}.png") 
 
